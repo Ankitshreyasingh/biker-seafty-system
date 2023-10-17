@@ -1,0 +1,56 @@
+#include <Arduino_MQTT.h>
+#include <WiFiNINA.h> // Include the WiFiNINA library
+
+const char* ssid = "A";
+const char* pass = "12345678";
+const char* mqtt_server = "192.168.43.32"; // Replace with the Raspberry Pi's IP address
+const int mqtt_port = 1883;
+
+WiFiClient net;
+MQTTClient client;
+
+void setup() {
+  Serial.begin(115200);
+  delay(10);
+
+  // Connect to Wi-Fi
+  WiFi.begin(ssid, pass);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Connecting to WiFi...");
+  }
+
+  Serial.println("Connected to WiFi");
+
+  // Connect to MQTT broker
+  client.begin(mqtt_server, mqtt_port, net);
+
+  // Your MQTT broker may require authentication. If so, use the following line:
+  // client.begin(mqtt_server, mqtt_port, net, "mqttUsername", "mqttPassword");
+
+  // Connect to MQTT
+  while (!client.connect("arduinoClient")) {
+    Serial.println("Connecting to MQTT broker...");
+    delay(1000);
+  }
+
+  Serial.println("Connected to MQTT broker");
+  client.subscribe("mqtt/topic"); // Subscribe to the topic you want to receive messages from
+}
+
+void loop() {
+  client.loop();
+
+  if (!client.connected()) {
+    if (client.connect("arduinoClient")) {
+      Serial.println("Reconnected to MQTT broker");
+    }
+  }
+
+  // Your sensor or data gathering code here
+  float sensorValue = analogRead(A0) * 5.0 / 1023;
+  String message = "Sensor value: " + String(sensorValue);
+
+  client.publish("mqtt/topic", message);
+  delay(5000); // Publish every 5 seconds
+}
